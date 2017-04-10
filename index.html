@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8">
+<title>Sankey Diagram</title>
+<style>
+  #chart {
+    height: 500px;
+  }
+
+  .node rect {
+    cursor: move;
+    fill-opacity: .9;
+    shape-rendering: crispEdges;
+  }
+
+  .node text {
+    pointer-events: none;
+    text-shadow: 0 1px 0 #fff;
+  }
+
+  .link {
+    fill: none;
+    stroke-opacity: .2;
+  }
+
+  .link:hover {
+    stroke-opacity: .5;
+  }
+</style>
+
+<body>
+  
+  <script src="https://d3js.org/d3.v4.js"></script>
+  <script src="https://unpkg.com/d3-sankey@0"></script>
+  <script>
+    var margin = {
+        top: 1,
+        right: 1,
+        bottom: 6,
+        left: 350
+      },
+    width = 960 - margin.left - margin.right,
+    height = 1000 - margin.top - margin.bottom
+    var mapping = {}
+    mapping["Art"]=0
+    mapping["Languages"]=1
+    mapping["Literature"]=2
+    mapping["Philosphy"]=3
+    mapping["Cultural Studies"]=4
+    mapping["History"]=5
+    mapping["Political Science"]=6
+    mapping["Economics"]=7
+    mapping["Psychology"]=8
+    mapping["Geosciences"]=9
+    mapping["Biology"]=10
+    mapping["Chemistry"]=11
+    mapping["Physics"]=12
+    mapping["Computer Science"]=13
+    mapping["Mathematics"]=14
+    mapping["Art"]=14
+    mapping["Writing"]=15
+    mapping["Social Work"]=16
+    mapping["Government"]=17
+    mapping["Law"]=18
+    mapping["Sales"]=19
+    mapping["Consulting"]=20
+    mapping["Finance"]=21
+    mapping["Insurance"]=22
+    mapping["K-12 Education"]=23
+    mapping["College Education"]=24
+    mapping["Health"]=25
+    mapping["Engineering"]=26
+    mapping["Technology"]=27
+    mapping["Other"]=28
+
+    var svg = d3.select("body").append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    var formatNumber = d3.format(",.0f"),
+      format = function(d) {
+        return formatNumber(d) + " TWh";
+      },
+      color = d3.scaleOrdinal(d3.schemeCategory20);
+
+
+    var sankey = d3.sankey()
+      .nodeWidth(15)
+      .nodePadding(10)
+      .size([width, height]);
+
+    var path = sankey.link();
+
+     d3.json("career.json", function(energy) {
+
+      sankey
+        .nodes(energy.nodes)
+        .links(energy.links)
+        .layout(32);
+
+      var link = svg.append("g").selectAll(".link")
+        .data(energy.links)
+        .enter().append("path")
+        .attr("class", "link")
+        .attr("d", path)
+        .style("stroke-width", function(d) {
+          return Math.max(1, d.dy);
+        })
+        .attr("stroke", function(d){
+          return d.color = color(d.source.name.replace(/ .*/, ""));
+        }) // LINK COLOR HERE
+        .sort(function(a, b) {
+          return b.dy - a.dy;
+        });
+
+      link.append("title")
+        .text(function(d) {
+          return d.source.name + " → " + d.target.name + "\n" + format(d.value);
+        });
+
+      var node = svg.append("g").selectAll(".node")
+        .data(energy.nodes)
+        .enter().append("g")
+        .attr("class", "node")
+        .attr("transform", function(d) {
+          return "translate(" + d.x + "," + d.y  + ")";
+        })
+        .on("click", handleNodeClick)
+      
+
+      node.append("rect")
+        .attr("height", function(d) {
+          return d.dy;
+        })
+        .attr("width", sankey.nodeWidth())
+        .style("fill", function(d) {
+          return d.color = color(d.name.replace(/ .*/, "")); // NODE COLOR HERE
+        })
+        .style("stroke", function(d) {
+          return d3.rgb(d.color).darker(2);
+        })
+        .append("title")
+        .text(function(d) {
+          return d.name + "\n" + format(d.value);
+        });
+
+      node.append("text")
+        .attr("x", -6)
+        .attr("y", function(d) {
+          return d.dy / 2;
+        })
+        .attr("dy", ".35em")
+        .attr("text-anchor", "end")
+        .attr("transform", null)
+        .text(function(d) {
+          return d.name;
+        })
+        .filter(function(d) {
+          return d.x < width / 2;
+        })
+        .attr("x", 6 + sankey.nodeWidth())
+        .attr("text-anchor", "start");
+
+  
+       function handleNodeClick(d, i){
+        name = d.name
+        number = mapping[d.name]
+        isMajor = number <= 14
+        d3.select("svg").remove();
+        svg = d3.select("body").append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+
+        
+        d3.json("career.json", function(energy) {
+
+          toLinks = {}
+          fromLinks = {}
+
+          sankey
+            .nodes(energy.nodes)
+            .links(energy.links)
+            .layout(32);
+
+
+          var link = svg.append("g").selectAll(".link")
+            .data(energy.links)
+            .enter().append("path")
+            .filter(function(d) { return d.target.name == name || d.source.name == name})
+            .attr("class", "link")
+            .attr("d", path)
+            .style("stroke-width", function(d) {
+              return Math.max(1, d.dy);
+            })
+            .attr("stroke", function(d){
+              toLinks[d.target.name] = true
+              fromLinks[d.source.name] = true
+              return d.color = color(d.source.name.replace(/ .*/, ""));
+            }) // LINK COLOR HERE
+            .sort(function(a, b) {
+              return b.dy - a.dy;
+            });
+
+            link.append("title")
+              .text(function(d) {
+                return d.source.name + " → " + d.target.name + "\n" + format(d.value);
+              });
+
+
+            var node = svg.append("g").selectAll(".node")
+              .data(energy.nodes)
+              .enter().append("g")
+              .filter(function(d) { return (toLinks[d.name] || fromLinks[d.name]) && 
+                ((d.name == name) || 
+                (isMajor && mapping[d.name] > 14) || 
+                (!isMajor && mapping[d.name] <= 14))})
+              .attr("class", "node")
+              .attr("transform", function(d) {
+                return "translate(" + d.x + "," + d.y  + ")";
+              })
+              
+      
+
+            node.append("rect")
+              .attr("height", function(d) {
+                return d.dy;
+              })
+              .attr("width", sankey.nodeWidth())
+              .style("fill", function(d) {
+                return d.color = color(d.name.replace(/ .*/, "")); // NODE COLOR HERE
+              })
+              .style("stroke", function(d) {
+                return d3.rgb(d.color).darker(2);
+              })
+              .append("title")
+              .text(function(d) {
+                return d.name + "\n" + format(d.value);
+              });
+
+                node.append("text")
+                  .attr("x", -6)
+                  .attr("y", function(d) {
+                    return d.dy / 2;
+                  })
+                  .attr("dy", ".35em")
+                  .attr("text-anchor", "end")
+                  .attr("transform", null)
+                  .text(function(d) {
+                    return d.name;
+                  })
+                  .filter(function(d) {
+                    return d.x < width / 2;
+                  })
+                  .attr("x", 6 + sankey.nodeWidth())
+                  .attr("text-anchor", "start");
+
+       })
+      }
+
+
+    });
+
+
+
+
+  </script>
+
+
+  </script>
